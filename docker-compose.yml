@@ -1,0 +1,74 @@
+services:
+  mp:
+    image: yhemp/jetson-app:12172025
+    container_name: mp_container_1228_b
+    stdin_open: true
+    tty: true
+
+    # Equivalent to --network host
+    network_mode: host
+
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+    cap_add:
+      - IPC_LOCK
+
+    # Equivalent to --ipc=host
+    ipc: host
+
+    # Equivalent to --privileged
+    privileged: true
+
+    # Equivalent to --runtime nvidia (Compose v2+ typically uses this)
+    runtime: nvidia
+    # Equivalent to --device ... and --group-add audio
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+
+    environment:
+      # pass-through from host
+      DISPLAY: "${DISPLAY}"
+      QT_X11_NO_MITSHM: "1"
+      XDG_RUNTIME_DIR: "${XDG_RUNTIME_DIR}"
+      PULSE_SERVER: "unix:${XDG_RUNTIME_DIR}/pulse/native"
+      PULSE_COOKIE: "/root/.config/pulse/cookie"
+      SDL_AUDIODRIVER: "pulse"
+      BAIDUPCS_GO_CONFIG_DIR: "/bpcs_cfg"
+      # --- ADD THESE ---
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,video"
+      LD_LIBRARY_PATH: "/usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/tegra:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XDG_RUNTIME_DIR}/pulse:${XDG_RUNTIME_DIR}/pulse
+      # host pulse cookie -> container cookie (read-only)
+      - ${PULSE_COOKIE}:/root/.config/pulse/cookie:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /tmp/argus_socket:/tmp/argus_socket
+      - /var/run/dbus:/var/run/dbus
+      - /run/NetworkManager:/run/NetworkManager
+      - /home/mp/NetdiskAutoUpload:/home/mp/NetdiskAutoUpload
+      - ${HOME}/.baidupcs-go:/bpcs_cfg
+      - /run/systemd/resolve/resolv.conf:/etc/resolv.conf:ro
+      - ${HOME}/work/container_folder:/container_folder
+      - ${HOME}/Videos:/root/Videos
+
+      # --- ADD THESE (Jetson libs) ---
+      - /usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/nvidia:ro
+      - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro
+
+    # Optional but often helpful for Jetson GUI/audio containers
+    # (keeps things from failing if no command is specified)
+    command: bash
+
+#  this is .env file. it needs to be in the same folder as docker-compose.yml
+#    PULSE_COOKIE=/home/mp/.config/pulse/cookie
+#    XDG_RUNTIME_DIR=/run/user/1000
+#    DISPLAY=:1
+#    HOME=/home/mp
